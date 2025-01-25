@@ -5,6 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # Load the dataset
 data = loadmat('dataset.mat')
+
 X = data['data_X']  # Shape: (100, 3)
 D = data['target_D']  # Shape: (100, 1)
 
