@@ -1,2 +1,6 @@
 /HW2/data
 /HW2/tools
+HW2/output.png
+HW2/output_l2.png
+HW2/saved_model/resnet200.pth
+HW2/predictions.csv
