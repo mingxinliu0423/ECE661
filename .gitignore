@@ -13,3 +13,4 @@ HW4/data/cifar-10-batches-py/data_batch_5
 *.pyc
 *.meta
 /HW4/data
+*.pt
