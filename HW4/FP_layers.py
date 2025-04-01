@@ -19,7 +19,6 @@ class STE(torch.autograd.Function):
         else:
             # Build a mask to record position of zero weights
             weight_mask = (w != 0).float()
-            
             # Lab3 (a), Your code here:
             if symmetric == False:
                 # Compute alpha (scale) for dynamic scaling
@@ -28,7 +27,6 @@ class STE(torch.autograd.Function):
                 beta = 0
                 # Scale w with alpha and beta so that all elements in ws are between 0 and 1
                 ws = w / alpha
-                
                 step = 2 ** (bit)-1
                 # Quantize ws with a linear quantizer to "bit" bits
                 R = torch.round(ws * step) / step
@@ -41,7 +39,6 @@ class STE(torch.autograd.Function):
                 alpha = torch.max(torch.abs(w))
                 # Scale w to [-1, 1] range
                 ws = w / alpha
-                
                 # For b-bit symmetric quantization
                 step = 2 ** (bit - 1)
                 # Quantize ws with a linear quantizer
