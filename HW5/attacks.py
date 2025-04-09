@@ -23,76 +23,65 @@ def gradient_wrt_data(model,device,data,lbl):
 
 
 def PGD_attack(model, device, dat, lbl, eps, alpha, iters, rand_start):
-    # TODO: Implement the PGD attack
-    # - dat and lbl are tensors
-    # - eps and alpha are floats
-    # - iters is an integer
-    # - rand_start is a bool
-
-    # x_nat is the natural (clean) data batch, we .clone().detach()
-    # to copy it and detach it from our computational graph
+    # x_nat is the natural (clean) data batch
     x_nat = dat.clone().detach()
-
-    # If rand_start is True, add uniform noise to the sample within [-eps,+eps],
-    # else just copy x_nat
+    
+    # Initialize x_adv
     if rand_start:
-        x_nat = x_nat + torch.FloatTensor(dat.shape).uniform_(-eps, eps).to(device)
+        # Random initialization within epsilon ball
+        x_adv = x_nat + torch.FloatTensor(dat.shape).uniform_(-eps, eps).to(device)
     else:
-        x_nat = x_nat.clone().detach()
-    # Make sure the sample is projected into original distribution bounds [0,1]
-    x_nat = torch.clamp(x_nat.clone().detach(), 0., 1.)
+        # Start from clean image
+        x_adv = x_nat.clone().detach()
+    
+    # Make sure we're in [0,1] bounds
+    x_adv = torch.clamp(x_adv, 0., 1.)
+    
     # Iterate over iters
     for i in range(iters):
-        # Compute gradient w.r.t. data (we give you this function, but understand it)
-        data_grad = gradient_wrt_data(model, device, x_nat, lbl)
+        # Compute gradient w.r.t. data
+        data_grad = gradient_wrt_data(model, device, x_adv, lbl)
+        
         # Perturb the image using the gradient
-        x_nat = x_nat + alpha * data_grad.sign()
-
-        # Clip the perturbed datapoints to ensure we still satisfy L_infinity constraint
-        x_nat = torch.clamp(x_nat.clone().detach(), x_nat - eps, x_nat + eps)
-        # Clip the perturbed datapoints to ensure we are in bounds [0,1]
-        x_nat = torch.clamp(x_nat.clone().detach(), 0., 1.)
-    # Return the final perturbed samples
-    return x_nat
+        x_adv = x_adv + alpha * data_grad.sign()
+        
+        # Project back to epsilon ball around x_nat
+        delta = torch.clamp(x_adv - x_nat, -eps, eps)
+        x_adv = x_nat + delta
+        
+        # Make sure we're in [0,1] bounds
+        x_adv = torch.clamp(x_adv, 0., 1.)
+    
+    return x_adv
 
 
 def FGSM_attack(model, device, dat, lbl, eps):
-    # TODO: Implement the FGSM attack
-    # - Dat and lbl are tensors
-    # - eps is a float
-
-    # HINT: FGSM is a special case of PGD
-
-    return 0
+    return PGD_attack(model, device, dat, lbl, eps, eps, 1, False)
 
 
 def rFGSM_attack(model, device, dat, lbl, eps):
-    # TODO: Implement the FGSM attack
-    # - Dat and lbl are tensors
-    # - eps is a float
-
-    # HINT: rFGSM is a special case of PGD
-
-    return 0
+    return PGD_attack(model, device, dat, lbl, eps, eps, 1, True)
 
 
 def FGM_L2_attack(model, device, dat, lbl, eps):
-    # x_nat is the natural (clean) data batch, we .clone().detach()
-    # to copy it and detach it from our computational graph
     x_nat = dat.clone().detach()
+    x_nat.requires_grad = True
 
-    # Compute gradient w.r.t. data
+    output = model(x_nat)
+    loss = F.cross_entropy(output, lbl)
+    model.zero_grad()
+    loss.backward()
 
-    # Compute sample-wise L2 norm of gradient (L2 norm for each batch element)
-    # HINT: Flatten gradient tensor first, then compute L2 norm
+    grad = x_nat.grad.data
 
-    # Perturb the data using the gradient
-    # HINT: Before normalizing the gradient by its L2 norm, use
-    # torch.clamp(l2_of_grad, min=1e-12) to prevent division by 0
+    # Flatten grad per sample and compute L2 norm
+    grad_view = grad.view(grad.shape[0], -1)
+    grad_norm = torch.norm(grad_view, p=2, dim=1).view(-1, 1, 1, 1)
+    grad_norm = torch.clamp(grad_norm, min=1e-12)  # Prevent division by zero
 
-    # Add perturbation the data
+    perturbation = eps * grad / grad_norm
+    x_adv = x_nat + perturbation
+    x_adv = torch.clamp(x_adv, 0., 1.)
 
-    # Clip the perturbed datapoints to ensure we are in bounds [0,1]
+    return x_adv
 
-    # Return the perturbed samples
-    return 0
