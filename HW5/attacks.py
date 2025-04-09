@@ -35,21 +35,25 @@ def PGD_attack(model, device, dat, lbl, eps, alpha, iters, rand_start):
 
     # If rand_start is True, add uniform noise to the sample within [-eps,+eps],
     # else just copy x_nat
-
+    if rand_start:
+        x_nat = x_nat + torch.FloatTensor(dat.shape).uniform_(-eps, eps).to(device)
+    else:
+        x_nat = x_nat.clone().detach()
     # Make sure the sample is projected into original distribution bounds [0,1]
-
+    x_nat = torch.clamp(x_nat.clone().detach(), 0., 1.)
     # Iterate over iters
-
+    for i in range(iters):
         # Compute gradient w.r.t. data (we give you this function, but understand it)
-
+        data_grad = gradient_wrt_data(model, device, x_nat, lbl)
         # Perturb the image using the gradient
+        x_nat = x_nat + alpha * data_grad.sign()
 
         # Clip the perturbed datapoints to ensure we still satisfy L_infinity constraint
-
+        x_nat = torch.clamp(x_nat.clone().detach(), x_nat - eps, x_nat + eps)
         # Clip the perturbed datapoints to ensure we are in bounds [0,1]
-
+        x_nat = torch.clamp(x_nat.clone().detach(), 0., 1.)
     # Return the final perturbed samples
-    return 0
+    return x_nat
 
 
 def FGSM_attack(model, device, dat, lbl, eps):
